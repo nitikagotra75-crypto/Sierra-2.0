@@ -1,0 +1,1 @@
+{ "auth": true, "routes": [ { "name": "alpha", "prefix": "/api/alphas", "target": "http://alpha-service:3000" }, { "name": "beta", "prefix": "/api/betas", "target": "http://beta-service:3000" } ] }

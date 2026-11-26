@@ -1,0 +1,96 @@
+name: ci
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm ci
+      - name: Install infra linters (hadolint, yamllint, kubernetes-validate, actionlint, nginx parser)
+        run: |
+          python -m venv "$RUNNER_TEMP/tools"
+          "$RUNNER_TEMP/tools/bin/pip" install -q hadolint-py yamllint kubernetes-validate actionlint-py crossplane pyyaml
+          echo "$RUNNER_TEMP/tools/bin" >> "$GITHUB_PATH"
+          echo "SIERRA_TOOLS_BIN=$RUNNER_TEMP/tools/bin" >> "$GITHUB_ENV"
+      - name: Install promtool and amtool
+        run: |
+          set -euo pipefail
+          P=2.54.1; A=0.27.0
+          curl -fsSL "https://github.com/prometheus/prometheus/releases/download/v${P}/prometheus-${P}.linux-amd64.tar.gz" | tar -xz -C "$RUNNER_TEMP"
+          curl -fsSL "https://github.com/prometheus/alertmanager/releases/download/v${A}/alertmanager-${A}.linux-amd64.tar.gz" | tar -xz -C "$RUNNER_TEMP"
+          mkdir -p "$RUNNER_TEMP/bin"
+          cp "$RUNNER_TEMP/prometheus-${P}.linux-amd64/promtool" "$RUNNER_TEMP/alertmanager-${A}.linux-amd64/amtool" "$RUNNER_TEMP/bin/"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - run: npm test
+        env:
+          REDIS_URL: redis://127.0.0.1:6379/0
+
+  # Every implemented stack, with its real toolchain and (for Express) a real MongoDB. --strict makes a skipped
+  # validation fail the job, so CI can never go green by silently not running something.
+  stacks:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: [node-express, python-fastapi, python-flask, python-django, node-fastify, nestjs, go-nethttp, go-gin, go-fiber, spring-boot, aspnet-core]
+    services:
+      mongo:
+        image: mongo:7
+        ports: ["27017:27017"]
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ping:1}).ok' || exit 1"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      MONGODB_URI: mongodb://127.0.0.1:27017/sierra_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - run: npm ci
+      - name: Validate generated ${{ matrix.stack }}
+        run: node scripts/validate-stacks.js --strict --stack ${{ matrix.stack }} --out validation-${{ matrix.stack }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: validation-${{ matrix.stack }}
+          path: validation-${{ matrix.stack }}.json
