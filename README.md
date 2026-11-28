@@ -1,10 +1,8 @@
-Sierra 2.0 — Backend
+Sierra 2.0 : Backend Generator
 
 Sierra turns a plain-English requirement into a working backend project in the stack you pick, then runs that project's own tests and tells you honestly whether it passed.
 
 Example requirement: Library API: books (title, author, isbn), members, loans. Members can register and log in. Result: a downloadable project with models, routes, validation and tests, plus a verification report.
-
-Frontend repo: https://github.com/nitikagotra75-crypto/Sierra-frontend
 
 What it does
 Reads your requirement and works out the entities and typed fields (books (title, author, isbn) becomes a Book with those three fields). An LLM designs the schema if you configure a key; otherwise fields are read straight from the requirement text.
@@ -33,34 +31,10 @@ Requirements: Node.js 18+. Python 3 and Go are needed only for those stacks.
 
 bash
 cd Sierra-backend
-cp .env.example .env        # Windows: copy .env.example .env
+cp .env.example .env        
 npm install
-npm run doctor              # checks Node, npm registry, .env, Python, Go, MongoDB
-npm start                   # http://localhost:5001
-
-Then start the frontend (Sierra-frontend: npm install, npm run dev, open http://localhost:5173).
-
-.env
-env
-PORT=5001
-
-# Sierra login/signup. REQUIRED, at least 16 characters.
-SIERRA_AUTH_SECRET=change-me-to-a-long-random-string
-
-# MongoDB. Needed to VERIFY Express projects. Delete the line to run without it.
-MONGODB_URI=mongodb://localhost:27017/sierra
-
-# AI (optional). Order tried: Gemini -> Groq -> Anthropic. No key = fields read from the requirement text.
-GEMINI_API_KEY=
-SIERRA_LLM_MODEL=gemini-2.5-flash
-GROQ_API_KEY=
-GROQ_MODEL=llama-3.3-70b-versatile
-
-# Optional
-SIERRA_MAX_FIX_ATTEMPTS=3
-REDIS_URL=redis://localhost:6379
-
-Rules: delete any line you have no value for (never leave <placeholder>), keep the file named exactly .env, never commit it. The frontend needs its own .env: VITE_API_BASE=http://localhost:5001.
+npm run doctor              
+npm start                   
 
 Writing a good requirement
 
@@ -134,6 +108,5 @@ Not available: Redis for Spring/.NET, read/write splitting for FastAPI + MySQL.
 
 Details: IMPLEMENTATION_STATUS.md, SYSTEM_ARCHITECTURE.md, TESTING_REPORT.md.
 
-Author
 
 Nitika Gotra — @nitikagotra75-crypto
